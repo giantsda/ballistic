@@ -1,0 +1,19 @@
+set multiplot layout 2,3 title "BP Test Weapon:CZ457. Ammo:SK Rifle match. Data:08202020. \n" font ",30"
+set tmargin 2
+set title "x vs elevationMil" font ",20"
+unset key
+plot 'data' using 1:2 with lines
+#
+set title "x vs Time"
+unset key
+plot 'data' using 1:3 with lines
+#
+set title "x vs windageMil"
+unset key
+plot 'data' using 1:4 with lines
+#
+set title "x vs Velocity"
+unset key
+plot 'data' using 1:5 with lines
+#
+unset multiplot
