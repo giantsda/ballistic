@@ -7,21 +7,31 @@ using namespace std;
 int
 main ()
 {
-  double angle = ZeroAngle (G1, 0.200, 1070, 1.8017, 25, 0.);
+  double BC = 0.14;
 
-  // printf("the shooting angle is %f\n",angle);
+  double Altitude=5003;
+  double Barometer=29.53;
+  double Temperature=86;
+  double RelativeHumidity=25;
+
+  double modifiedBC = AtmCorrect (BC, Altitude, Barometer,
+				  Temperature, RelativeHumidity);
+
+  double angle = ZeroAngle (G1, modifiedBC, 1070, 1.8017, 25, 0.);
+
+  printf ("the shooting angle is %f\n", angle);
 
   printf ("# Range elevationMil Time WindageMil Velocity \n");
 
-  double **solution = (double**) malloc (20);
+  double **solution = (double**) malloc (1);
   // double ZeroAngle(int DragFunction, double DragCoefficient, double Vi, double SightHeight, double ZeroRange, double yIntercept){
 
 // 	int SolveAll(int DragFunction, double DragCoefficient, double Vi, double SightHeight, \
 // double ShootingAngle, double ZAngle, double WindSpeed, double WindAngle, double** Solution){
-  SolveAll (G1, 0.2, 1070, 1.8017, 0, angle, 10, 90, solution);
+  SolveAll (G1, modifiedBC, 1070, 1.8017, 0, angle, 10, 90, solution);
   double *data = *solution;
 
-  for (int i = 0; i < 586; i = i + 8)
+  for (int i = 0; i < 300; i = i + 5)
     {
       printf ("%f ", data[i * 10 + 0]);
       printf ("%f ", data[i * 10 + 2] / 3.438);

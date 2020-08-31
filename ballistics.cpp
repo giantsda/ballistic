@@ -658,7 +658,7 @@ ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
   // Numerical Integration variables
   double t = 0;
   double dt = 1 / Vi; // The solution accuracy generally doesn't suffer if its within a foot for each second of time.
-  double y = -SightHeight / 12; // convert inch to feet
+  double y = -SightHeight / 12;
   double x = 0;
   double da; // The change in the bore angle used to iterate in on the correct zero angle.
 
@@ -682,16 +682,15 @@ ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
   // than 20 iterations.
   for (angle = 0; quit == 0; angle = angle + da)
     {
-
-      vy = Vi * sin (angle);
       vx = Vi * cos (angle);
+      vy = Vi * sin (angle);
       Gx = GRAVITY * sin (angle);
       Gy = GRAVITY * cos (angle);
 
-      for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt)
+      for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt)  //why*3??
 	{
-	  vx1 = vx;
 	  vy1 = vy;
+	  vx1 = vx;
 	  v = pow ((pow (vx, 2) + pow (vy, 2)), 0.5);
 	  dt = 0.5 / v;
 
@@ -699,8 +698,10 @@ ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
 	  dvy = -dv * vy / v * dt;
 	  dvx = -dv * vx / v * dt;
 
-	  vx = vx + dt * dvx + dt * Gx;
-	  vy = vy + dt * dvy + dt * Gy;
+	  vx = vx + dvx;
+	  vy = vy + dvy;
+	  vy = vy + dt * Gy;
+	  vx = vx + dt * Gx;
 
 	  x = x + dt * (vx + vx1) / 2;
 	  y = y + dt * (vy + vy1) / 2;
@@ -724,43 +725,13 @@ ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
 	{
 	  da = -da / 2;
 	}
-      printf ("x=%f;y=%f;angle=%f;da=%f,nextangle=%.8f\n", x, y, angle, da,
-	      angle = angle + da);
 
-      if (fabs (da) < MOAtoRad (0.005))
+      if (fabs (da) < MOAtoRad (0.0005))
 	quit = 1; // If our accuracy is sufficient, we can stop approximating.
       if (angle > DegtoRad (45))
 	quit = 1; // If we exceed the 45 degree launch angle, then the projectile just won't get there, so we stop trying.
 
     }
-
-//  printf ("-----------------------------------\n");
-//  vy = Vi * sin (angle);
-//  vx = Vi * cos (angle);
-//  Gx = GRAVITY * sin (angle);
-//  Gy = GRAVITY * cos (angle);
-//
-//  for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt)
-//    {
-//      vx1 = vx;
-//      vy1 = vy;
-//      v = pow ((pow (vx, 2) + pow (vy, 2)), 0.5);
-//      dt = 0.5 / v;
-//
-//      dv = retard (DragFunction, DragCoefficient, v);
-//      dvy = -dv * vy / v * dt;
-//      dvx = -dv * vx / v * dt;
-//
-//      vx = vx + dt * dvx + dt * Gx;
-//      vy = vy + dt * dvy + dt * Gy;
-//
-//      x = x + dt * (vx + vx1) / 2;
-//      y = y + dt * (vy + vy1) / 2;
-//
-//      printf("x:%f;y:%fele:%f\n",x/3,y,-RadtoMOA (atan (y / x)));
-//
-//    }
-//  printf ("-----------------------------------\n");
 
   return RadtoDeg (angle); // Convert to degrees for return value.
 }
@@ -810,7 +781,7 @@ SolveAll (int DragFunction, double DragCoefficient, double Vi,
       vx = vx + dt * dvx + dt * Gx;
       vy = vy + dt * dvy + dt * Gy;
 
-//      if (x / 3 >= n)
+      if (x / 3 >= n)
 	{
 	  ptr[10 * n + 0] = x / 3;				// Range in yds
 	  ptr[10 * n + 1] = y * 12;			// Path in inches
@@ -818,7 +789,7 @@ SolveAll (int DragFunction, double DragCoefficient, double Vi,
 	  ptr[10 * n + 3] = t + dt;				// Time in s
 	  ptr[10 * n + 4] = Windage (crosswind, Vi, x, t + dt); // Windage in inches
 	  ptr[10 * n + 5] = RadtoMOA (
-	      atan ((ptr[10 * n + 4] / 12) / (ptr[10 * n + 0] * 3))); // Windage in MOA
+	      atan ((ptr[10 * n + 4] / 12) / (ptr[10 * n + 0] * 3)));// Windage in MOA
 	  ptr[10 * n + 6] = v;				// Velocity (combined)
 	  ptr[10 * n + 7] = vx;					// Velocity (x)
 	  ptr[10 * n + 8] = vy;					// Velocity (y)

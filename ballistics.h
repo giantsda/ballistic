@@ -5,7 +5,7 @@
 #ifndef __lib_ballistics__
 #define __lib_ballistics__
 #define __BCOMP_MAXRANGE__ 50001
-#define GRAVITY (-32.194)
+#define GRAVITY (-32.194)   //why not -9.81
 enum __DragFunctions
 {
   G1 = 1, G2, G3, G4, G5, G6, G7, G8
