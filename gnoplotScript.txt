@@ -1,8 +1,10 @@
+# also use : gnuplot -e "plot 'Data.txt' using 2 with lines;pause -1"
+
 set multiplot layout 2,3 title "BP Test Weapon:CZ457. Ammo:SK Rifle match. Data:08202020. \n" font ",30"
 set tmargin 2
 set title "x vs elevationMil" font ",20"
 unset key
-plot 'data' using 1:2 with lines
+plot 'Data.txt' using 1:2 with lines
 #
 set title "x vs Time"
 unset key

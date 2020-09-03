@@ -2,11 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "ballistics.h"
-#include "NR_chen.h"
+#include <boost/tuple/tuple.hpp>
 
-void
-myfun (int n, double *BC, double *out, struct Parameters *P)
+FILE *file;
+
+
+double
+myfun (double BC, struct Parameters *P)
 {
+//  double x=BC;
+//  double y = (x - 1) * (x - 1) + 100;
   double MV = P->MV;
   int DragFunction = P->DragFunction;
   double Altitude = P->Altitude;
@@ -15,8 +20,11 @@ myfun (int n, double *BC, double *out, struct Parameters *P)
   double RelativeHumidity = P->RelativeHumidity;
   double scopeOffset = P->scopeOffset;
   double zeroRange = P->zeroRange;
+  double *TriedDistance = P->TriedDistance;
+  double *TriedElevation = P->TriedElevation;
+  double TriedN = P->TriedN;
 
-  double modifiedBC = AtmCorrect (BC[0], Altitude, Barometer, Temperature,
+  double modifiedBC = AtmCorrect (BC, Altitude, Barometer, Temperature,
 				  RelativeHumidity);
 
   double angle = ZeroAngle (DragFunction, modifiedBC, MV, scopeOffset,
@@ -27,22 +35,32 @@ myfun (int n, double *BC, double *out, struct Parameters *P)
 	    solution);
   double *data = *solution;
 
-  out[0] = (GetMOA (data, 25)) / 3.438   + (GetMOA (data, 50)) / 3.438
-      + ((GetMOA (data, 100) / 3.438 - 1.9)) ;
-
-  printf ("BC:%f \n", BC[0]);
-  for (int i = 0; i < 101; i = i + 5)
+  double error = 0;
+  for (int i = 0; i < TriedN; i++)
     {
-      printf ("%f ", data[i * 10 + 0]);
-      printf ("%f ", data[i * 10 + 2] / 3.438);
-      printf ("%f ", data[i * 10 + 3]);
-      printf ("%f ", data[i * 10 + 5] / 3.438);
-      printf ("%f ", data[i * 10 + 6]);
-      printf ("\n");
+      error += fabs (
+	  GetMOA (data, TriedDistance[i]) / 3.438 - TriedElevation[i]);
     }
 
-//  free (solution[0]);
-//  free (solution);
+
+//    printf ("BC:%f error=%f\n", BC,error );
+
+  fprintf (file, "%f   %f\n", BC, error);
+
+//    for (int i = 0; i < 101; i = i + 5)
+//      {
+//        printf ("%f ", data[i * 10 + 0]);
+//        printf ("%f ", data[i * 10 + 2] / 3.438);
+//        printf ("%f ", data[i * 10 + 3]);
+//        printf ("%f ", data[i * 10 + 5] / 3.438);
+//        printf ("%f ", data[i * 10 + 6]);
+//        printf ("\n");
+//      }
+  fflush (stdout);
+  free (solution[0]);
+  free (solution);
+  return error;
+
 }
 
 using namespace std;
@@ -59,26 +77,36 @@ main ()
   double MV = 1070;
   double scopeOffset = 1.8017;
   double zeroRange = 25;
+  double TriedDistance[100] =
+    {  50, 100,200,254 };
+  double TriedElevation[100] =
+    {   0, 1.9,6.8,9.9 };
+  int TriedN = 4;
+
   struct Parameters P =
     { MV, DragFunction, Altitude, Barometer, Temperature, RelativeHumidity,
-	scopeOffset, zeroRange };
-  double x[] =
-    { 0.2 };
-  int fail = adm_chen (&myfun, x, 1e-5, 50, 1, 0.9, 30, &P);
-  BC = x[0];
+	scopeOffset, zeroRange, TriedDistance, TriedElevation, TriedN };
+
+  file = fopen ("Data.txt", "w+");
+  fprintf (file, "# sample 2-column data file\n");
+
+  BC = Adam (&myfun, &P, 0.2, 300, 0.001);
+
+  fclose (file);
+  printf ("solutions=%f\n", BC);
+
   double modifiedBC = AtmCorrect (BC, Altitude, Barometer, Temperature,
 				  RelativeHumidity);
   double angle = ZeroAngle (DragFunction, modifiedBC, 1070, 1.8017, 25, 0.);
   printf ("BC:%f \n", BC);
   printf ("the shooting angle is %f degree\n", angle);
-
   printf ("# Range elevationMil Time WindageMil Velocity \n");
 
   double **solution = (double**) malloc (1);
   SolveAll (DragFunction, modifiedBC, 1070, 1.8017, 0, angle, 10, 90, solution);
   double *data = *solution;
 
-  for (int i = 0; i < 300; i = i + 25)
+  for (int i = 0; i <= 300; i = i + 25)
     {
       printf ("%f ", data[i * 10 + 0]);
       printf ("%f ", data[i * 10 + 2] / 3.438);
@@ -89,49 +117,4 @@ main ()
     }
   return 0;
 }
-
-/*
-
- int
- main ()
- {
- double BC = 0.14;
- int DragFunction=G1;
- double Altitude=5003;
- double Barometer=29.53;
- double Temperature=86;
- double RelativeHumidity=25;
-
- double modifiedBC = AtmCorrect (BC, Altitude, Barometer,
- Temperature, RelativeHumidity);
-
- double angle = ZeroAngle (DragFunction, modifiedBC, 1070, 1.8017, 25, 0.);
-
- printf ("the shooting angle is %f degree\n", angle);
-
- printf ("# Range elevationMil Time WindageMil Velocity \n");
-
- double **solution = (double**) malloc (1);
- // double ZeroAngle(int DragFunction, double DragCoefficient, double Vi, double SightHeight, double ZeroRange, double yIntercept){
-
- // 	int SolveAll(int DragFunction, double DragCoefficient, double Vi, double SightHeight, \
-// double ShootingAngle, double ZAngle, double WindSpeed, double WindAngle, double** Solution){
- SolveAll (DragFunction, modifiedBC, 1070, 1.8017, 0, angle, 10, 90, solution);
- double *data = *solution;
-
- for (int i = 0; i < 101; i = i + 5)
- {
- printf ("%f ", data[i * 10 + 0]);
- printf ("%f ", data[i * 10 + 2] / 3.438);
- printf ("%f ", data[i * 10 + 3]);
- printf ("%f ", data[i * 10 + 5] / 3.438);
- printf ("%f ", data[i * 10 + 6]);
- printf ("\n");
- }
- return 0;
- }
-
-
-
- */
 

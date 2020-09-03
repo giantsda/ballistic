@@ -20,6 +20,9 @@ struct Parameters
   double RelativeHumidity;
   double scopeOffset;
   double zeroRange;
+  double* TriedDistance;
+  double* TriedElevation;
+  int TriedN;
 };
 
 
@@ -98,6 +101,11 @@ SolveAll (int DragFunction, double DragCoefficient, double Vi,
  and should not be exceeded in order to avoid a memory segmentation fault.
 
  */
+double Adam(double (*f) (double x,struct Parameters *P),struct Parameters *P,double w=0.2, int n_iterations=100,double learning_rate=0.1); /* optimization solver;*/
+
+
+
+
 
 // Functions for retrieving data from a solution generated with SolveAll()
 double

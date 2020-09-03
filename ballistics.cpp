@@ -35,6 +35,54 @@ RadtoMOA (double rad)
   return rad * 60 * 180 / M_PI;
 }
 
+double
+Adam (double
+(*f) (double x, struct Parameters *P),
+      struct Parameters *P, double w, int n_iterations, double learning_rate) /*w is the initialGuess*/
+{
+
+//  w_s=[];
+//  error_s=[];
+
+  double beta1 = 0.9;
+  double beta2 = 0.999;
+  double alpha = learning_rate;
+  double epsilon = 10e-8;
+  int nW = 1;
+
+  double g = 0;
+  double g2 = 0;
+  double beta1t = beta1;
+  double beta2t = beta2;
+  double error = 0.;
+  double grad = 0.;
+  double g_corrected = 0.;
+  double g2_corrected = 0.;
+  for (int i = 0; i < n_iterations; i++)
+    {
+      error = f (w, P);
+      printf ("iteration:%d;BC:%f;error:%f\n", i,w,error);
+      if (w < 0)
+	grad = -5;
+      else
+	grad = (f (w + epsilon, P) - f (w, P)) / epsilon;
+      g = beta1 * g + (1 - beta1) * grad;
+      g2 = beta2 * g2 + (1 - beta2) * grad * grad;
+      g_corrected = g / (1 - beta1t);
+      g2_corrected = g2 / (1 - beta2t);
+      w = w - alpha * g_corrected / (sqrt (g2_corrected) + epsilon);
+//      w_s=[w_s w];
+//      error_s=[error_s error];
+      beta1t = beta1t * beta1;
+      beta2t = beta2t * beta2;
+    }
+
+//  plot(error_s)
+
+  return w;
+
+}
+
 /// ############ Functions for correcting for atmosphere.
 double
 calcFR (double Temperature, double Pressure, double RelativeHumidity)
@@ -86,6 +134,476 @@ AtmCorrect (double DragCoefficient, double Altitude, double Barometer,
   double CD = (FA * (1 + FT - FP) * FR);
   return DragCoefficient * CD;
 
+}
+
+// "Retrieval Functions" for getting at the solution result.
+double
+GetRange (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage];
+    }
+  else
+    return 0;
+}
+
+double
+GetPath (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 1];
+    }
+  else
+    return 0;
+}
+
+double
+GetMOA (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 2];
+    }
+  else
+    return 0;
+}
+
+double
+GetTime (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 3];
+    }
+  else
+    return 0;
+}
+
+double
+GetWindage (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 4];
+    }
+  else
+    return 0;
+}
+
+double
+GetWindageMOA (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 5];
+    }
+  else
+    return 0;
+}
+
+double
+GetVelocity (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 6];
+    }
+  else
+    return 0;
+}
+
+double
+GetVx (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 7];
+    }
+  else
+    return 0;
+}
+
+double
+GetVy (double *sln, int yardage)
+{
+  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
+  if (yardage < size)
+    {
+      return sln[10 * yardage + 8];
+    }
+  else
+    return 0;
+}
+
+double
+Windage (double WindSpeed, double Vi, double xx, double t)
+{
+  double Vw = WindSpeed * 17.60; // Convert to inches per second.
+  return (Vw * (t - xx / Vi));
+}
+
+// Headwind is positive at WindAngle=0
+double
+HeadWind (double WindSpeed, double WindAngle)
+{
+  double Wangle = DegtoRad (WindAngle);
+  return (cos (Wangle) * WindSpeed);
+}
+
+// Positive is from Shooter's Right to Left (Wind from 90 degree)
+double
+CrossWind (double WindSpeed, double WindAngle)
+{
+  double Wangle = DegtoRad (WindAngle);
+  return (sin (Wangle) * WindSpeed);
+}
+
+double
+ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
+	   double SightHeight, double ZeroRange, double yIntercept)
+{
+
+  // Numerical Integration variables
+  double t = 0;
+  double dt = 1 / Vi; // The solution accuracy generally doesn't suffer if its within a foot for each second of time.
+  double y = -SightHeight / 12;
+  double x = 0;
+  double da; // The change in the bore angle used to iterate in on the correct zero angle.
+
+  // State variables for each integration loop.
+  double v = 0, vx = 0, vy = 0; // velocity
+  double vx1 = 0, vy1 = 0; // Last frame's velocity, used for computing average velocity.
+  double dv = 0, dvx = 0, dvy = 0; // acceleration
+  double Gx = 0, Gy = 0; // Gravitational acceleration
+
+  double angle = 0; // The actual angle of the bore.
+
+  int quit = 0; // We know it's time to quit our successive approximation loop when this is 1.
+
+  // Start with a very coarse angular change, to quickly solve even large launch angle problems.
+  da = DegtoRad (14);
+
+  // The general idea here is to start at 0 degrees elevation, and increase the elevation by 14 degrees
+  // until we are above the correct elevation.  Then reduce the angular change by half, and begin reducing
+  // the angle.  Once we are again below the correct angle, reduce the angular change by half again, and go
+  // back up.  This allows for a fast successive approximation of the correct elevation, usually within less
+  // than 20 iterations.
+  for (angle = 0; quit == 0; angle = angle + da)
+    {
+      vx = Vi * cos (angle);
+      vy = Vi * sin (angle);
+      Gx = GRAVITY * sin (angle);
+      Gy = GRAVITY * cos (angle);
+
+      for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt) //why*3?? because 1yard=3feet
+	{
+	  vy1 = vy;
+	  vx1 = vx;
+	  v = pow ((pow (vx, 2) + pow (vy, 2)), 0.5);
+	  dt = 0.5 / v;
+
+	  dv = retard (DragFunction, DragCoefficient, v);
+	  dvy = -dv * vy / v * dt;
+	  dvx = -dv * vx / v * dt;
+
+	  vx = vx + dvx;
+	  vy = vy + dvy;
+	  vy = vy + dt * Gy;
+	  vx = vx + dt * Gx;
+
+	  x = x + dt * (vx + vx1) / 2;
+	  y = y + dt * (vy + vy1) / 2;
+	  // Break early to save CPU time if we won't find a solution.
+	  if (vy < 0 && y < yIntercept)
+	    {
+	      break;
+	    }
+	  if (vy > 3 * vx)
+	    {
+	      break;
+	    }
+	}
+
+      if (y > yIntercept && da > 0)
+	{
+	  da = -da / 2;
+	}
+
+      if (y < yIntercept && da < 0)
+	{
+	  da = -da / 2;
+	}
+
+      if (fabs (da) < MOAtoRad (0.0001))
+	quit = 1; // If our accuracy is sufficient, we can stop approximating.
+      if (angle > DegtoRad (45))
+	quit = 1; // If we exceed the 45 degree launch angle, then the projectile just won't get there, so we stop trying.
+
+    }
+
+  return RadtoDeg (angle); // Convert to degrees for return value.
+}
+
+// The solve-all solution.
+int
+SolveAll (int DragFunction, double DragCoefficient, double Vi,
+	  double SightHeight, double ShootingAngle, double ZAngle,
+	  double WindSpeed, double WindAngle, double **Solution)
+{
+
+  double *ptr;
+  ptr = (double*) malloc (10 * __BCOMP_MAXRANGE__ * sizeof(double) + 2048);
+
+  double t = 0;
+  double dt = 0.5 / Vi;
+  double v = 0;
+  double vx = 0, vx1 = 0, vy = 0, vy1 = 0;
+  double dv = 0, dvx = 0, dvy = 0;
+  double x = 0, y = 0;
+
+  double headwind = HeadWind (WindSpeed, WindAngle);
+  double crosswind = CrossWind (WindSpeed, WindAngle);
+//  if (DragCoefficient<0)
+//    Vi=10; // BC cannot be negative so give it a big value to produce unphysical results.
+
+  double Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
+  double Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
+
+  vx = Vi * cos (DegtoRad (ZAngle));
+  vy = Vi * sin (DegtoRad (ZAngle));
+
+  y = -SightHeight / 12;
+
+  int n = 0;
+  for (t = 0;; t = t + dt)
+    {
+
+      vx1 = vx, vy1 = vy;
+      v = pow (pow (vx, 2) + pow (vy, 2), 0.5);
+      dt = 0.5 / v;
+
+      // Compute acceleration using the drag function retardation
+      dv = retard (DragFunction, DragCoefficient, v + headwind);
+      dvx = -(vx / v) * dv;
+      dvy = -(vy / v) * dv;
+
+      // Compute velocity, including the resolved gravity vectors.
+      vx = vx + dt * dvx + dt * Gx;
+      vy = vy + dt * dvy + dt * Gy;
+
+      if (x / 3 >= n)
+	{
+	  ptr[10 * n + 0] = x / 3;				// Range in yds
+	  ptr[10 * n + 1] = y * 12;			// Path in inches
+	  ptr[10 * n + 2] = -RadtoMOA (atan (y / x));	// Correction in MOA
+	  ptr[10 * n + 3] = t + dt;				// Time in s
+	  ptr[10 * n + 4] = Windage (crosswind, Vi, x, t + dt); // Windage in inches
+	  ptr[10 * n + 5] = RadtoMOA (
+	      atan ((ptr[10 * n + 4] / 12) / (ptr[10 * n + 0] * 3))); // Windage in MOA
+	  ptr[10 * n + 6] = v;				// Velocity (combined)
+	  ptr[10 * n + 7] = vx;					// Velocity (x)
+	  ptr[10 * n + 8] = vy;					// Velocity (y)
+	  ptr[10 * n + 9] = 0;					// Reserved
+	  n++;
+	}
+
+      // Compute position based on average velocity.
+      x = x + dt * (vx + vx1) / 2;
+      y = y + dt * (vy + vy1) / 2;
+
+      if (fabs (vy) > fabs (3 * vx))
+	break;
+      if (n >= __BCOMP_MAXRANGE__ + 1)
+	break;
+    }
+
+  ptr[10 * __BCOMP_MAXRANGE__ + 1] = (double) n;
+
+  *Solution = ptr;
+
+  return n;
+}
+
+#define TOO_LOW 1
+#define TOO_HIGH 2
+#define PBR_ERROR 3
+
+// Solves for the maximum Point blank range and associated details.
+int
+pbr (int DragFunction, double DragCoefficient, double Vi, double SightHeight,
+     double VitalSize, int *oresult)
+{
+
+  double t = 0;
+  double dt = 0.5 / Vi;
+  double v = 0;
+  double vx = 0, vx1 = 0, vy = 0, vy1 = 0;
+  double dv = 0, dvx = 0, dvy = 0;
+  double x = 0, y = 0;
+  double ShootingAngle = 0;
+  double ZAngle = 0;
+  double Step = 10;
+
+  int result = 0;
+
+  int quit = 0;
+
+  double zero = -1;
+  double farzero = 0;
+
+  int vertex_keep = 0;
+  double y_vertex = 0;
+  double x_vertex = 0;
+
+  double min_pbr_range = 0;
+  int min_pbr_keep = 0;
+
+  double max_pbr_range = 0;
+  int max_pbr_keep = 0;
+
+  int tin100 = 0;
+
+  double Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
+  double Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
+
+  while (quit == 0)
+    {
+
+      Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
+      Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
+
+      vx = Vi * cos (DegtoRad (ZAngle));
+      vy = Vi * sin (DegtoRad (ZAngle));
+
+      y = -SightHeight / 12;
+
+      x = 0;
+      y = -SightHeight / 12;
+
+      int keep = 0;
+      int keep2 = 0;
+      int tinkeep = 0;
+      min_pbr_keep = 0;
+      max_pbr_keep = 0;
+      vertex_keep = 0;
+
+      tin100 = 0;
+      tinkeep = 0;
+
+      int n = 0;
+      for (t = 0;; t = t + dt)
+	{
+
+	  vx1 = vx, vy1 = vy;
+	  v = pow (pow (vx, 2) + pow (vy, 2), 0.5);
+	  dt = 0.5 / v;
+
+	  // Compute acceleration using the drag function retardation
+	  dv = retard (DragFunction, DragCoefficient, v);
+	  dvx = -(vx / v) * dv;
+	  dvy = -(vy / v) * dv;
+
+	  // Compute velocity, including the resolved gravity vectors.
+	  vx = vx + dt * dvx + dt * Gx;
+	  vy = vy + dt * dvy + dt * Gy;
+
+	  // Compute position based on average velocity.
+	  x = x + dt * (vx + vx1) / 2;
+	  y = y + dt * (vy + vy1) / 2;
+
+	  if (y > 0 && keep == 0 && vy >= 0)
+	    {
+	      zero = x;
+	      keep = 1;
+	    }
+
+	  if (y < 0 && keep2 == 0 && vy <= 0)
+	    {
+	      farzero = x;
+	      keep2 = 1;
+	    }
+
+	  if ((12 * y) > -(VitalSize / 2) && min_pbr_keep == 0)
+	    {
+	      min_pbr_range = x;
+	      min_pbr_keep = 1;
+	    }
+
+	  if ((12 * y) < -(VitalSize / 2) && min_pbr_keep == 1
+	      && max_pbr_keep == 0)
+	    {
+	      max_pbr_range = x;
+	      max_pbr_keep = 1;
+	    }
+
+	  if (x >= 300 && tinkeep == 0)
+	    {
+	      tin100 = (int) ((float) 100 * (float) y * (float) 12);
+	      tinkeep = 1;
+	    }
+
+	  if (fabs (vy) > fabs (3 * vx))
+	    {
+	      result = PBR_ERROR;
+	      break;
+	    }
+	  if (n >= __BCOMP_MAXRANGE__ + 1)
+	    {
+	      result = PBR_ERROR;
+	      break;
+	    }
+
+	  // The PBR will be maximum at the point where the vertex is 1/2 vital zone size.
+	  if (vy < 0 && vertex_keep == 0)
+	    {
+	      y_vertex = y;
+	      x_vertex = x;
+	      vertex_keep = 1;
+	    }
+
+	  if (keep == 1 && keep2 == 1 && min_pbr_keep == 1 && max_pbr_keep == 1
+	      && vertex_keep == 1 && tinkeep == 1)
+	    {
+	      break;
+	    }
+
+	}
+
+      if ((y_vertex * 12) > (VitalSize / 2))
+	{
+	  if (Step > 0)
+	    Step = -Step / 2; // Vertex too high.  Go downwards.
+	}
+
+      else if ((y_vertex * 12) <= (VitalSize / 2))
+	{ // Vertex too low.  Go upwards.
+	  if (Step < 0)
+	    Step = -Step / 2;
+	}
+
+      ZAngle += Step;
+
+      if (fabs (Step) < (0.01 / 60))
+	quit = 1;
+    }
+
+  oresult[0] = (int) (zero / 3); // Near Zero
+  oresult[1] = (int) (farzero / 3); // Far zero
+  oresult[2] = (int) (min_pbr_range / 3); // Minimum PBR
+  oresult[3] = (int) (max_pbr_range / 3); // Maximum PBR
+  oresult[4] = (int) tin100; // Sight-in at 100 yds (in 100ths of an inch)
+
+  return 0;
 }
 
 // ############ Functions for correcting for ballistic drag.
@@ -516,475 +1034,5 @@ retard (int DragFunction, double DragCoefficient, double Velocity)
     }
   else
     return -1;
-}
-
-// "Retrieval Functions" for getting at the solution result.
-double
-GetRange (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage];
-    }
-  else
-    return 0;
-}
-
-double
-GetPath (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 1];
-    }
-  else
-    return 0;
-}
-
-double
-GetMOA (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 2];
-    }
-  else
-    return 0;
-}
-
-double
-GetTime (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 3];
-    }
-  else
-    return 0;
-}
-
-double
-GetWindage (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 4];
-    }
-  else
-    return 0;
-}
-
-double
-GetWindageMOA (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 5];
-    }
-  else
-    return 0;
-}
-
-double
-GetVelocity (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 6];
-    }
-  else
-    return 0;
-}
-
-double
-GetVx (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 7];
-    }
-  else
-    return 0;
-}
-
-double
-GetVy (double *sln, int yardage)
-{
-  double size = sln[__BCOMP_MAXRANGE__ * 10 + 1];
-  if (yardage < size)
-    {
-      return sln[10 * yardage + 8];
-    }
-  else
-    return 0;
-}
-
-double
-Windage (double WindSpeed, double Vi, double xx, double t)
-{
-  double Vw = WindSpeed * 17.60; // Convert to inches per second.
-  return (Vw * (t - xx / Vi));
-}
-
-// Headwind is positive at WindAngle=0
-double
-HeadWind (double WindSpeed, double WindAngle)
-{
-  double Wangle = DegtoRad (WindAngle);
-  return (cos (Wangle) * WindSpeed);
-}
-
-// Positive is from Shooter's Right to Left (Wind from 90 degree)
-double
-CrossWind (double WindSpeed, double WindAngle)
-{
-  double Wangle = DegtoRad (WindAngle);
-  return (sin (Wangle) * WindSpeed);
-}
-
-double
-ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
-	   double SightHeight, double ZeroRange, double yIntercept)
-{
-
-  // Numerical Integration variables
-  double t = 0;
-  double dt = 1 / Vi; // The solution accuracy generally doesn't suffer if its within a foot for each second of time.
-  double y = -SightHeight / 12;
-  double x = 0;
-  double da; // The change in the bore angle used to iterate in on the correct zero angle.
-
-  // State variables for each integration loop.
-  double v = 0, vx = 0, vy = 0; // velocity
-  double vx1 = 0, vy1 = 0; // Last frame's velocity, used for computing average velocity.
-  double dv = 0, dvx = 0, dvy = 0; // acceleration
-  double Gx = 0, Gy = 0; // Gravitational acceleration
-
-  double angle = 0; // The actual angle of the bore.
-
-  int quit = 0; // We know it's time to quit our successive approximation loop when this is 1.
-
-  // Start with a very coarse angular change, to quickly solve even large launch angle problems.
-  da = DegtoRad (14);
-
-  // The general idea here is to start at 0 degrees elevation, and increase the elevation by 14 degrees
-  // until we are above the correct elevation.  Then reduce the angular change by half, and begin reducing
-  // the angle.  Once we are again below the correct angle, reduce the angular change by half again, and go
-  // back up.  This allows for a fast successive approximation of the correct elevation, usually within less
-  // than 20 iterations.
-  for (angle = 0; quit == 0; angle = angle + da)
-    {
-      vx = Vi * cos (angle);
-      vy = Vi * sin (angle);
-      Gx = GRAVITY * sin (angle);
-      Gy = GRAVITY * cos (angle);
-
-      for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt)  //why*3?? because 1yard=3feet
-	{
-	  vy1 = vy;
-	  vx1 = vx;
-	  v = pow ((pow (vx, 2) + pow (vy, 2)), 0.5);
-	  dt = 0.5 / v;
-
-	  dv = retard (DragFunction, DragCoefficient, v);
-	  dvy = -dv * vy / v * dt;
-	  dvx = -dv * vx / v * dt;
-
-	  vx = vx + dvx;
-	  vy = vy + dvy;
-	  vy = vy + dt * Gy;
-	  vx = vx + dt * Gx;
-
-	  x = x + dt * (vx + vx1) / 2;
-	  y = y + dt * (vy + vy1) / 2;
-	  // Break early to save CPU time if we won't find a solution.
-	  if (vy < 0 && y < yIntercept)
-	    {
-	      break;
-	    }
-	  if (vy > 3 * vx)
-	    {
-	      break;
-	    }
-	}
-
-      if (y > yIntercept && da > 0)
-	{
-	  da = -da / 2;
-	}
-
-      if (y < yIntercept && da < 0)
-	{
-	  da = -da / 2;
-	}
-
-      if (fabs (da) < MOAtoRad (0.0005))
-	quit = 1; // If our accuracy is sufficient, we can stop approximating.
-      if (angle > DegtoRad (45))
-	quit = 1; // If we exceed the 45 degree launch angle, then the projectile just won't get there, so we stop trying.
-
-    }
-
-  return RadtoDeg (angle); // Convert to degrees for return value.
-}
-
-// The solve-all solution.
-int
-SolveAll (int DragFunction, double DragCoefficient, double Vi,
-	  double SightHeight, double ShootingAngle, double ZAngle,
-	  double WindSpeed, double WindAngle, double **Solution)
-{
-
-  double *ptr;
-  ptr = (double*) malloc (10 * __BCOMP_MAXRANGE__ * sizeof(double) + 2048);
-
-  double t = 0;
-  double dt = 0.5 / Vi;
-  double v = 0;
-  double vx = 0, vx1 = 0, vy = 0, vy1 = 0;
-  double dv = 0, dvx = 0, dvy = 0;
-  double x = 0, y = 0;
-
-  double headwind = HeadWind (WindSpeed, WindAngle);
-  double crosswind = CrossWind (WindSpeed, WindAngle);
-  if (DragCoefficient<0)
-    DragCoefficient=100000; // BC cannot be negative so give it a big value to produce unphysical results.
-
-  double Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
-  double Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
-
-  vx = Vi * cos (DegtoRad (ZAngle));
-  vy = Vi * sin (DegtoRad (ZAngle));
-
-  y = -SightHeight / 12;
-
-  int n = 0;
-  for (t = 0;; t = t + dt)
-    {
-
-      vx1 = vx, vy1 = vy;
-      v = pow (pow (vx, 2) + pow (vy, 2), 0.5);
-      dt = 0.5 / v;
-
-      // Compute acceleration using the drag function retardation
-      dv = retard (DragFunction, DragCoefficient, v + headwind);
-      dvx = -(vx / v) * dv;
-      dvy = -(vy / v) * dv;
-
-      // Compute velocity, including the resolved gravity vectors.
-      vx = vx + dt * dvx + dt * Gx;
-      vy = vy + dt * dvy + dt * Gy;
-
-      if (x / 3 >= n)
-	{
-	  ptr[10 * n + 0] = x / 3;				// Range in yds
-	  ptr[10 * n + 1] = y * 12;			// Path in inches
-	  ptr[10 * n + 2] = -RadtoMOA (atan (y / x));	// Correction in MOA
-	  ptr[10 * n + 3] = t + dt;				// Time in s
-	  ptr[10 * n + 4] = Windage (crosswind, Vi, x, t + dt); // Windage in inches
-	  ptr[10 * n + 5] = RadtoMOA (
-	      atan ((ptr[10 * n + 4] / 12) / (ptr[10 * n + 0] * 3)));// Windage in MOA
-	  ptr[10 * n + 6] = v;				// Velocity (combined)
-	  ptr[10 * n + 7] = vx;					// Velocity (x)
-	  ptr[10 * n + 8] = vy;					// Velocity (y)
-	  ptr[10 * n + 9] = 0;					// Reserved
-	  n++;
-	}
-
-      // Compute position based on average velocity.
-      x = x + dt * (vx + vx1) / 2;
-      y = y + dt * (vy + vy1) / 2;
-
-      if (fabs (vy) > fabs (3 * vx))
-	break;
-      if (n >= __BCOMP_MAXRANGE__ + 1)
-	break;
-    }
-
-  ptr[10 * __BCOMP_MAXRANGE__ + 1] = (double) n;
-
-  *Solution = ptr;
-
-  return n;
-}
-
-#define TOO_LOW 1
-#define TOO_HIGH 2
-#define PBR_ERROR 3
-
-// Solves for the maximum Point blank range and associated details.
-int
-pbr (int DragFunction, double DragCoefficient, double Vi, double SightHeight,
-     double VitalSize, int *oresult)
-{
-
-  double t = 0;
-  double dt = 0.5 / Vi;
-  double v = 0;
-  double vx = 0, vx1 = 0, vy = 0, vy1 = 0;
-  double dv = 0, dvx = 0, dvy = 0;
-  double x = 0, y = 0;
-  double ShootingAngle = 0;
-  double ZAngle = 0;
-  double Step = 10;
-
-  int result = 0;
-
-  int quit = 0;
-
-  double zero = -1;
-  double farzero = 0;
-
-  int vertex_keep = 0;
-  double y_vertex = 0;
-  double x_vertex = 0;
-
-  double min_pbr_range = 0;
-  int min_pbr_keep = 0;
-
-  double max_pbr_range = 0;
-  int max_pbr_keep = 0;
-
-  int tin100 = 0;
-
-  double Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
-  double Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
-
-  while (quit == 0)
-    {
-
-      Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
-      Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
-
-      vx = Vi * cos (DegtoRad (ZAngle));
-      vy = Vi * sin (DegtoRad (ZAngle));
-
-      y = -SightHeight / 12;
-
-      x = 0;
-      y = -SightHeight / 12;
-
-      int keep = 0;
-      int keep2 = 0;
-      int tinkeep = 0;
-      min_pbr_keep = 0;
-      max_pbr_keep = 0;
-      vertex_keep = 0;
-
-      tin100 = 0;
-      tinkeep = 0;
-
-      int n = 0;
-      for (t = 0;; t = t + dt)
-	{
-
-	  vx1 = vx, vy1 = vy;
-	  v = pow (pow (vx, 2) + pow (vy, 2), 0.5);
-	  dt = 0.5 / v;
-
-	  // Compute acceleration using the drag function retardation
-	  dv = retard (DragFunction, DragCoefficient, v);
-	  dvx = -(vx / v) * dv;
-	  dvy = -(vy / v) * dv;
-
-	  // Compute velocity, including the resolved gravity vectors.
-	  vx = vx + dt * dvx + dt * Gx;
-	  vy = vy + dt * dvy + dt * Gy;
-
-	  // Compute position based on average velocity.
-	  x = x + dt * (vx + vx1) / 2;
-	  y = y + dt * (vy + vy1) / 2;
-
-	  if (y > 0 && keep == 0 && vy >= 0)
-	    {
-	      zero = x;
-	      keep = 1;
-	    }
-
-	  if (y < 0 && keep2 == 0 && vy <= 0)
-	    {
-	      farzero = x;
-	      keep2 = 1;
-	    }
-
-	  if ((12 * y) > -(VitalSize / 2) && min_pbr_keep == 0)
-	    {
-	      min_pbr_range = x;
-	      min_pbr_keep = 1;
-	    }
-
-	  if ((12 * y) < -(VitalSize / 2) && min_pbr_keep == 1
-	      && max_pbr_keep == 0)
-	    {
-	      max_pbr_range = x;
-	      max_pbr_keep = 1;
-	    }
-
-	  if (x >= 300 && tinkeep == 0)
-	    {
-	      tin100 = (int) ((float) 100 * (float) y * (float) 12);
-	      tinkeep = 1;
-	    }
-
-	  if (fabs (vy) > fabs (3 * vx))
-	    {
-	      result = PBR_ERROR;
-	      break;
-	    }
-	  if (n >= __BCOMP_MAXRANGE__ + 1)
-	    {
-	      result = PBR_ERROR;
-	      break;
-	    }
-
-	  // The PBR will be maximum at the point where the vertex is 1/2 vital zone size.
-	  if (vy < 0 && vertex_keep == 0)
-	    {
-	      y_vertex = y;
-	      x_vertex = x;
-	      vertex_keep = 1;
-	    }
-
-	  if (keep == 1 && keep2 == 1 && min_pbr_keep == 1 && max_pbr_keep == 1
-	      && vertex_keep == 1 && tinkeep == 1)
-	    {
-	      break;
-	    }
-
-	}
-
-      if ((y_vertex * 12) > (VitalSize / 2))
-	{
-	  if (Step > 0)
-	    Step = -Step / 2; // Vertex too high.  Go downwards.
-	}
-
-      else if ((y_vertex * 12) <= (VitalSize / 2))
-	{ // Vertex too low.  Go upwards.
-	  if (Step < 0)
-	    Step = -Step / 2;
-	}
-
-      ZAngle += Step;
-
-      if (fabs (Step) < (0.01 / 60))
-	quit = 1;
-    }
-
-  oresult[0] = (int) (zero / 3); // Near Zero
-  oresult[1] = (int) (farzero / 3); // Far zero
-  oresult[2] = (int) (min_pbr_range / 3); // Minimum PBR
-  oresult[3] = (int) (max_pbr_range / 3); // Maximum PBR
-  oresult[4] = (int) tin100; // Sight-in at 100 yds (in 100ths of an inch)
-
-  return 0;
 }
 
