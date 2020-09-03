@@ -5,11 +5,25 @@
 #ifndef __lib_ballistics__
 #define __lib_ballistics__
 #define __BCOMP_MAXRANGE__ 50001
-#define GRAVITY (-32.194)   //why not -9.81
+#define GRAVITY (-32.194)   //why not -9.81 // unit is ft/s2
 enum __DragFunctions
 {
   G1 = 1, G2, G3, G4, G5, G6, G7, G8
 };
+struct Parameters
+{
+  double MV;
+  int DragFunction;
+  double Altitude;
+  double Barometer;
+  double Temperature;
+  double RelativeHumidity;
+  double scopeOffset;
+  double zeroRange;
+};
+
+
+
 #include <math.h>
 #include <stdlib.h>
 

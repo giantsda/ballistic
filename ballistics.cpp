@@ -687,7 +687,7 @@ ZeroAngle (int DragFunction, double DragCoefficient, double Vi,
       Gx = GRAVITY * sin (angle);
       Gy = GRAVITY * cos (angle);
 
-      for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt)  //why*3??
+      for (t = 0, x = 0, y = -SightHeight / 12; x <= ZeroRange * 3; t = t + dt)  //why*3?? because 1yard=3feet
 	{
 	  vy1 = vy;
 	  vx1 = vx;
@@ -755,6 +755,8 @@ SolveAll (int DragFunction, double DragCoefficient, double Vi,
 
   double headwind = HeadWind (WindSpeed, WindAngle);
   double crosswind = CrossWind (WindSpeed, WindAngle);
+  if (DragCoefficient<0)
+    DragCoefficient=100000; // BC cannot be negative so give it a big value to produce unphysical results.
 
   double Gy = GRAVITY * cos (DegtoRad ((ShootingAngle + ZAngle)));
   double Gx = GRAVITY * sin (DegtoRad ((ShootingAngle + ZAngle)));
