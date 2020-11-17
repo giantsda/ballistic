@@ -5,4 +5,4 @@ run:
 	make all
 	./a.out
 clean :
-	rm *.o a.out  
+	rm *.o a.out errorTrack.txt  

@@ -10,7 +10,7 @@ int sizeOfDope;
 double
 getError (double BC, double *range, double *DOPE);
 double
-adm (double *range, double *DOPE);
+adm (int interation, double *range, double *DOPE);
 
 // double getError(double BC,int N,double* range, double* DOPE)
 int
@@ -27,7 +27,7 @@ main ()
   double range[] =
     { 50, 75, 100, 125, 150, 175, 200, 300 };
   double DOPE[] =
-    { 0.177, 0.96, 2.0, 3.0, 4.3, 5.8, 7.2, 13.38};
+    { 0.177, 0.96, 2.0, 3.0, 4.3, 5.8, 7.2, 13.38 };
   int N1 = sizeof(range) / sizeof(range[0]);
   int N2 = sizeof(DOPE) / sizeof(DOPE[0]);
   if (N1 != N2)
@@ -40,7 +40,7 @@ main ()
       sizeOfDope = N1;
     }
 
-  double BC = adm (range, DOPE);
+  double BC = adm (500, range, DOPE);
 
   double modifiedBC = AtmCorrect (BC, Altitude, Barometer, Temperature,
 				  RelativeHumidity);
@@ -65,7 +65,7 @@ main ()
 }
 
 double
-adm (double *range, double *DOPE)
+adm (int interation, double *range, double *DOPE)
 {
   double learning_rate, beta1, beta2, alpha, epsilon, g, g2, beta1t, beta2t, w,
       delta, error, grad, alphat;
@@ -82,7 +82,8 @@ adm (double *range, double *DOPE)
   delta = 0.000001;
   // error_s=[];
   // w_s=[];
-  for (int i = 0; i < 500; i++)
+  FILE *f1 = fopen ("errorTrack.txt", "w");
+  for (int i = 0; i < interation; i++)
     {
       error = getError (w, range, DOPE);
       grad = (getError (w + delta, range, DOPE) - error) / delta;
@@ -92,11 +93,12 @@ adm (double *range, double *DOPE)
       beta2t = beta2t * beta2;
       alphat = alpha * sqrt (1 - beta2t) / (1 - beta1t);
       w = w - alphat * g / (sqrt (g2) + epsilon);
-      printf ("i=%d, BC=%f, error=%f\n", i, w, error);
+      fprintf (f1, "%d, %f, %f\n", i, w, error);
       // w_s=[w_s w];
       // error_s=[error_s error];
     }
-
+  fclose (f1);
+  printf ("The BC is %f\n", w);
   return w;
 }
 

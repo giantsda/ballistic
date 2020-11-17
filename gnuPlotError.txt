@@ -1,0 +1,1 @@
+plot "errorTrack.txt" using 1:3 title 'error' with lines
