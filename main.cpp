@@ -47,17 +47,17 @@ main ()
 
   double angle = ZeroAngle (G1, modifiedBC, MV, ScopeOffset, zeroYard, 0.);
   printf ("the shooting angle is %f\n", angle);
-  printf ("# Range elevationMil Time WindageMil Velocity \n");
+  printf ("# Range elevationMil   WindageMil   \n");
   double **solution = (double**) malloc (1);
   SolveAll (G1, modifiedBC, MV, ScopeOffset, 0, angle, 10, 90, solution);
   double *data = *solution;
-  for (int i = 0; i < 304; i = i + 25)
+  for (int i = 0; i < 304; i = i + 1)
     {
       printf ("%f ", data[i * 10 + 0]);
       printf ("%f ", data[i * 10 + 2] / 3.438);
-      printf ("%f ", data[i * 10 + 3]);
+      // printf ("%f ", data[i * 10 + 3]);
       printf ("%f ", data[i * 10 + 5] / 3.438);
-      printf ("%f ", data[i * 10 + 6]);
+      // printf ("%f ", data[i * 10 + 6]);
       printf ("\n");
     }
 
