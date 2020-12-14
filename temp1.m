@@ -6,23 +6,24 @@ Vx0=V0*cos(theta);
 Vy0=V0*sin(theta);
 t=0;
 distance=600;
-timeStep=50000;
-x=0;
-y=0;
-dt=0.1/V0;
+maxTimeStep=50000;
+dt=1/V0/1;
 
 g=32.1740;% ft/s2
-Vxs=zeros(timeStep,1);
-Vys=zeros(timeStep,1);
-Position=zeros(timeStep,2);
+Vxs=zeros(maxTimeStep,1);
+Vys=zeros(maxTimeStep,1);
+Position=zeros(maxTimeStep,2);
 
+i=1;
+x=0;
+y=0;
 Vx=Vx0;
 Vy=Vy0;
-i=1;
 %% Eluer
 while(x<distance)
-    Vx=Vx-Cd*Vx*Vx*dt;
-    Vy=Vy-Cd*Vx*Vy*dt-g*dt;
+    V=sqrt(Vx^2+Vy^2);
+    Vx=Vx-Cd*V*Vx*dt; %eqn 8.51-8.53 from<<Ballistics Theory and Design of Guns and Ammunition>> 
+    Vy=Vy-Cd*V*Vy*dt-g*dt;
     x=x+Vx*dt;
     y=y+Vy*dt;
     Vxs(i)=Vx;
@@ -31,42 +32,4 @@ while(x<distance)
     i=i+1;
 end
 plot(Position(1:i-1,1),Position(1:i-1,2));
-
 hold on;
-
-
-
-
-x=linspace(0,600,1000);
-y=0+x*tan(theta)-g/Vx0^2*1/4/Cd^2*(exp(2*Cd.*x));
-plot(x,y)
-
-legend('numerical','analytical')
-% %% RK4
-% for i=1:timeStep
-%     % for Vx
-%     k1=dx*-Cd*Vx;
-%     k2=dx*Vx;
-%     k3=dx*Vx;
-%     k4=dx*Vx;
-%     x=x+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
-%     % for Vy
-%     k1=dt*Vy;
-%     k2=dt*(Vy-g*0.5*dt);
-%     k3=dt*(Vy-g*0.5*dt);
-%     k4=dt*(Vy-g*dt);
-%     y=y+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
-%     Vy=Vy-g*dt;
-%     Vxs(i)=Vx;
-%     Vys(i)=Vy;
-%     Position(i,:)=[x y];
-% end
-% y
-% % V0*cos(theta)*1
-% % shouldBeY=V0*sin(theta)*tEnd-0.5*g*tEnd*tEnd;
-% % plot(Vys);
-% % error=abs(shouldBeY-y);
-% plot(Position(:,1),Position(:,2));
-% % hold on;
-
-
