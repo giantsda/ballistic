@@ -1,32 +1,33 @@
+%% Input Parameters
 V0=2800;
 Cd=0.006;
-pi=3.14159265358;
-theta=0.2*pi/180;
+distance=600;
+theta=2*pi/180;
 Vwind=10;
 thetaWind=45*pi/180;
+ 
+%% Initilize
+dt=1/V0/0.5;
+maxTimeStep=50000;
+pi=3.14159265358;
+g=32.1740;% ft/s2
 Vx=V0;
 Vy=0;
 Vz=0;
 Wx=Vwind*cos(thetaWind);
 Wz=Vwind*sin(thetaWind);
 Wy=0;
-t=0;
-distance=600;
-maxTimeStep=50000;
-dt=1/V0/0.5;
-
-g=32.1740;% ft/s2
 gx=g*sin(theta);
 gy=g*cos(theta);
 Vxs=zeros(maxTimeStep,1);
 Vys=zeros(maxTimeStep,1);
 Vzs=zeros(maxTimeStep,1);
 Position=zeros(maxTimeStep,3);
-
 i=1;
 x=0;
 y=0;
 z=0;
+
 %% Eluer
 while(x<distance)
     V=sqrt(Vx^2+Vy^2+Vz^2);
@@ -45,9 +46,9 @@ end
 Position(i:end,:)=[];
 plot(Position(:,1),Position(:,2));
 hold on;
-% % rotate theta angle upwards and it should be the same as cartesian coordinates
-% Position=Position*[cos(-theta) -sin(-theta) 0;sin(-theta) cos(-theta) 0;0 0 1]; 
-% plot(Position(:,1),Position(:,2));
+% rotate theta angle upwards and it should be the same as cartesian coordinates
+Position=Position*[cos(-theta) -sin(-theta) 0;sin(-theta) cos(-theta) 0;0 0 1]; 
+plot(Position(:,1),Position(:,2));
 
  
 i=1;
@@ -93,7 +94,7 @@ while(x<distance)
 end
 Position(i:end,:)=[];
 plot(Position(:,1),Position(:,2));
-plot(PositionS(:,1),PositionS(:,2));
+% plot(PositionS(:,1),PositionS(:,2));
 
 legend('Eluer','RK4','Accurate');
 

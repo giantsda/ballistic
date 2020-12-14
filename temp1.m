@@ -1,35 +1,45 @@
-V0=2800;
-Cd=0.006;
-pi=3.14159265358;
-theta=0.2*pi/180;
-Vx0=V0*cos(theta);
-Vy0=V0*sin(theta);
-t=0;
-distance=600;
-maxTimeStep=50000;
-dt=1/V0/1;
+Cd=getDrag(1100,"G7",siacci)
+plot(1100,Cd,'o')
 
-g=32.1740;% ft/s2
-Vxs=zeros(maxTimeStep,1);
-Vys=zeros(maxTimeStep,1);
-Position=zeros(maxTimeStep,2);
-
-i=1;
-x=0;
-y=0;
-Vx=Vx0;
-Vy=Vy0;
-%% Eluer
-while(x<distance)
-    V=sqrt(Vx^2+Vy^2);
-    Vx=Vx-Cd*V*Vx*dt; %eqn 8.51-8.53 from<<Ballistics Theory and Design of Guns and Ammunition>> 
-    Vy=Vy-Cd*V*Vy*dt-g*dt;
-    x=x+Vx*dt;
-    y=y+Vy*dt;
-    Vxs(i)=Vx;
-    Vys(i)=Vy;
-    Position(i,:)=[x y];
-    i=i+1;
+function Cd=getDrag(Velocity,DragFunction,siacci)
+switch DragFunction
+    case "G1"
+        data=siacci.G1DragCurveData;
+    case "G2"
+        data=siacci.G2DragCurveData;
+    case "G5"
+        data=siacci.G5DragCurveData;
+    case "G6"
+        data=siacci.G6DragCurveData;
+    case "G7"
+        data=siacci.G7DragCurveData;
+    case "G8"
+        data=siacci.G8DragCurveData;
+    case "Sphere"
+        data=siacci.SphereDragCurveData;
 end
-plot(Position(1:i-1,1),Position(1:i-1,2));
-hold on;
+
+x=data(:,1); % velocity
+y=data(:,2); % Cd
+X=data(:,3); % 2rd derivative
+ 
+% plot(x,y,'*');
+% hold on;
+klo=1;
+khi=length(x);
+while ((khi-klo)>1)
+    k=floor((khi+klo)/2);
+    if (x(k)>Velocity)
+        khi=k;
+    else
+        klo=k;
+    end
+end
+h=x(khi)-x(klo);
+if (h==0)
+    error('spline_chen: Bad x input. x(%d)=x(%d)=%f',khi,klo,x(khi));
+end
+a=(x(khi)-Velocity)/h;
+b=(Velocity-x(klo))/h;
+Cd=a*y(klo)+b*y(khi)+((a*a*a-a)*X(klo)+(b*b*b-b)*X(khi))*h*h/6;
+end
