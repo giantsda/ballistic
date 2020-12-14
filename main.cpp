@@ -54,13 +54,28 @@ main ()
   for (int i = 0; i < 304; i = i + 1)
     {
       printf ("%f ", data[i * 10 + 0]);
+      printf ("%f ", data[i * 10 + 1]);
       printf ("%f ", data[i * 10 + 2] / 3.438);
-      // printf ("%f ", data[i * 10 + 3]);
       printf ("%f ", data[i * 10 + 5] / 3.438);
-      // printf ("%f ", data[i * 10 + 6]);
+      printf ("%f ", data[i * 10 + 3]);
+      printf ("%f ", data[i * 10 + 6]);
       printf ("\n");
     }
 
+
+FILE* fid=fopen("Results.txt","w");
+  for (int i = 0; i < 304; i = i + 1)
+    {
+      fprintf (fid,"%f ", data[i * 10 + 0]);
+      fprintf (fid,"%f ", data[i * 10 + 1]);
+      fprintf (fid,"%f ", data[i * 10 + 2] / 3.438);
+      fprintf (fid,"%f ", data[i * 10 + 5] / 3.438);
+      fprintf (fid,"%f ", data[i * 10 + 3]);
+      fprintf (fid,"%f ", data[i * 10 + 6]);
+      fprintf (fid,"\n");
+    }
+
+fclose(fid);
   return 0;
 }
 

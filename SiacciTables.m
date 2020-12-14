@@ -28,14 +28,14 @@
 
 
 %% get drag curve
-b=siacci.Sphere;
+b=siacci.G8;
  
 xq=linspace(b(1,1),b(end,1),10000); 
 vq = interp1(b(:,1),b(:,2),xq,'spline');
 c=1./-diff(vq)./diff(xq)./xq(1:end-1)*1e3;
 
-% plot(xq(1:1:end-1),c(1:1:end));
-% hold on;
+plot(xq(1:1:end-1),c(1:1:end));
+hold on;
 c = smoothdata(c,'gaussian',200);
 plot(xq(1:1:end-1),c(1:1:end));
-siacci.SphereDragCurve=[xq(1:end-1).' c.'];
+siacci.G8DragCurve=[xq(1:end-1).' c.'];
