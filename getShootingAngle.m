@@ -1,10 +1,9 @@
-function theta=getShootingAngle(MV,BC,zeroDistance,Vwind,thetaWind,DragFunction,scopeOffSet)
+function theta=getShootingAngle(siacci,MV,BC,zeroDistance,Vwind,thetaWind,DragFunction,scopeOffSet)
 %% call it getShootingAngle(1088.45,0.1512,25,10,90*pi/180,"G1",1.8017)
-load ('siacci.mat')
 pi=3.14159265358;
 %% Initilize
 V0=MV;
-dt=1/V0/5;
+dt=1/V0/2;
 maxTimeStep=50000;
 g=32.1740;% ft/s2
 Wx=Vwind*cos(thetaWind);
@@ -83,7 +82,7 @@ while(~quit)
     
 end
 Position(i:end,:)=[];
-plot(Position(:,1),Position(:,2),'*-')
+% plot(Position(:,1),Position(:,2),'*-');
  
 
 
