@@ -1,6 +1,10 @@
 load ('siacci.mat');
 %% Input Parameters
-BC=0.1512;
+Altitude = 4917;
+Barometer = 24.97;
+Temperature = 52.34;
+RelativeHumidity = 31;
+
 MV=1088.45;
 zeroDistance=25;
 pi=3.14159265358;
@@ -17,7 +21,11 @@ parameters.DragFunction=DragFunction;
 parameters.scopeOffSet=scopeOffSet;
 parameters.distance=distance;
 parameters.siacci=siacci;
-
+parameters.Altitude=Altitude;
+parameters.Barometer=Barometer;
+parameters.Temperature=Temperature;
+parameters.RelativeHumidity=RelativeHumidity;
+ 
 range=[50, 75, 100, 125, 150, 175, 200, 300 ];
 DOPE=[0.177, 0.96, 2.0, 3.0, 4.3, 5.8, 7.2, 13.38];
 [BC, w_s]=adm (300, range, DOPE,parameters);
@@ -26,10 +34,13 @@ BC=min(w_s(index,1))
 
 %% use adm to calculate BC
 %% get shooting angle
-theta=getShootingAngle(siacci,MV,BC,zeroDistance,Vwind,thetaWind,"G1",scopeOffSet);
+modifiedBC=atmosphericCorrection (BC,   Altitude,   Barometer,  Temperature,   RelativeHumidity);
+theta=getShootingAngle(siacci,MV,modifiedBC,zeroDistance,Vwind,thetaWind,"G1",scopeOffSet);
 %% solve trajectory
-Results=solveTrajectory(siacci,MV,BC,theta,Vwind,thetaWind,DragFunction,scopeOffSet,distance);
+Results=solveTrajectory(siacci,MV,modifiedBC,theta,Vwind,thetaWind,DragFunction,scopeOffSet,distance);
 vq = interp1(Results(:,1),Results,[5:5:300]);
+fprintf("%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n","range","elevation","windage","Drop","Vx","Vy","Vz","V","t");
+fprintf("%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.3f\n",vq.');
 
 
 
@@ -66,8 +77,6 @@ end
 
 
 function sumError=getError(BC,range,DOPE,parameters)
-%     modifiedBC = AtmCorrect (BC, Altitude, Barometer, Temperature,
-% 				  RelativeHumidity);
 MV=parameters.MV;
 zeroDistance=parameters.zeroDistance;
 Vwind=parameters.Vwind;
@@ -76,9 +85,15 @@ DragFunction=parameters.DragFunction;
 scopeOffSet=parameters.scopeOffSet;
 distance=parameters.distance;
 siacci=parameters.siacci;
+Altitude=parameters.Altitude;
+Barometer=parameters.Barometer;
+Temperature=parameters.Temperature;
+RelativeHumidity=parameters.RelativeHumidity;
 
-theta = getShootingAngle(siacci,MV,BC,zeroDistance,Vwind,thetaWind,DragFunction,scopeOffSet);
-Results=solveTrajectory(siacci,MV,BC,theta,Vwind,thetaWind,DragFunction,scopeOffSet,distance);
+modifiedBC=atmosphericCorrection (BC,   Altitude,   Barometer,  Temperature,   RelativeHumidity);
+ 
+theta = getShootingAngle(siacci,MV,modifiedBC,zeroDistance,Vwind,thetaWind,DragFunction,scopeOffSet);
+Results=solveTrajectory(siacci,MV,modifiedBC,theta,Vwind,thetaWind,DragFunction,scopeOffSet,distance);
 vq = interp1(Results(:,1),Results(:,2),range);
 sumError=sum(abs(vq-DOPE));
 end
