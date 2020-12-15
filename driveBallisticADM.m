@@ -40,7 +40,8 @@ theta=getShootingAngle(siacci,MV,modifiedBC,zeroDistance,Vwind,thetaWind,"G1",sc
 Results=solveTrajectory(siacci,MV,modifiedBC,theta,Vwind,thetaWind,DragFunction,scopeOffSet,distance);
 vq = interp1(Results(:,1),Results,[5:5:300]);
 fprintf("%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n","range","elevation","windage","Drop","Vx","Vy","Vz","V","t");
-fprintf("%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.3f\n",vq.');
+fprintf("%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n","Yard","mrad","mrad","inch","fps","fps","fps","fps","second");
+fprintf("%-10.0f%-10.1f%-10.1f%-10.2f%-10.2f%-10.2f%-10.2f%-10.2f%-10.3f\n",vq.');
 
 
 

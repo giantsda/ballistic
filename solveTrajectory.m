@@ -2,7 +2,7 @@ function Results=solveTrajectory(siacci,MV,BC,theta,Vwind,thetaWind,DragFunction
 V0=MV;
 
 %% Initilize
-pi=3.14159265358;
+pi=3.1415926535897932;
 dt=1/V0/2;
 maxTimeStep=50000;
 g=32.1740;% ft/s2

@@ -1,5 +1,5 @@
 a.out: ballistics.cpp main.cpp
-	g++ -g ballistics.cpp main.cpp -I.
+	g++ -g -O0 ballistics.cpp main.cpp -I.
 all: a.out
 run: 
 	make all
