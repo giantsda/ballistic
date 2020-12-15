@@ -9,6 +9,7 @@ g=32.1740;% ft/s2
 Vx=V0*cos(theta);
 Vy=V0*sin(theta);
 Vz=0;
+Vwind=Vwind*1.4666666666; % convert mpg to fps;
 Wx=Vwind*cos(thetaWind);
 Wz=Vwind*sin(thetaWind);
 Wy=0;

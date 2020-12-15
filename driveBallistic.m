@@ -16,7 +16,7 @@ theta=getShootingAngle(siacci,MV,BC,zeroDistance,Vwind,thetaWind,"G1",scopeOffSe
 %% solve trajectory
 Results=solveTrajectory(siacci,MV,BC,theta,Vwind,thetaWind,DragFunction,scopeOffSet,distance);
 
-plot(Results(:,1),Results(:,4));
+plot(Results(:,1),Results(:,7));
 legend('trajectory'); 
 
  

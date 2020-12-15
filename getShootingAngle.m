@@ -6,6 +6,7 @@ V0=MV;
 dt=1/V0/2;
 maxTimeStep=50000;
 g=32.1740;% ft/s2
+Vwind=Vwind*1.4666666666; % convert mpg to fps;
 Wx=Vwind*cos(thetaWind);
 Wz=Vwind*sin(thetaWind);
 Wy=0;
